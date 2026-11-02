@@ -84,7 +84,6 @@
     const path = decodeURIComponent(location.hash.replace(/^#/, '') || '/');
     if (path === '/photos') return { type: 'photos' };
     if (path.startsWith('/recipe/')) return { type: 'recipe', id: path.slice('/recipe/'.length) };
-    if (path === '/about') return { type: 'about' };
     return { type: 'home' };
   }
 
@@ -98,7 +97,6 @@
         <nav class="main-nav" aria-label="${t('mainNavAria', '主导航')}">
           <a href="#/" ${current === 'home' ? 'aria-current="page"' : ''}>${t('recipes', '菜谱')} <span class="nav-count">${cookedCount}</span></a>
           <a href="#/photos" ${current === 'photos' ? 'aria-current="page"' : ''}>${t('photos', '照片档案')}</a>
-          <a href="#/about" ${current === 'about' ? 'aria-current="page"' : ''}>${t('about', '关于记录')}</a>
         </nav>
         <select class="language-select" aria-label="${t('languageAria', '选择语言')}">
           <option value="zh" ${state.locale === 'zh' ? 'selected' : ''}>${t('languageChinese', '中文')}</option>
@@ -227,7 +225,7 @@
         <div id="filters">${filters()}</div>
         <div id="gallery-results" aria-live="polite">${galleryResults()}</div>
       </section>
-      <section class="bottom-callout layout-container"><div class="callout-flower">✳</div><div><span>${t('calloutEyebrow', 'AN HONEST KITCHEN DIARY')}</span><h2>${t('calloutTitle', '做得不完美，也值得写下来。')}</h2><p>${t('calloutText', '留下真实反馈，才能在下一次尝试里有所不同。')}</p></div><a href="#/about">${t('readPrinciples', '看看记录原则')} ${arrow}</a></section>`;
+      `;
   }
 
   function itemList(items, numbered = false) {
@@ -303,14 +301,6 @@
     </main>`;
   }
 
-  function aboutPage() {
-    return `<main class="about-page layout-container"><div class="breadcrumbs"><a href="#/">${t('home', '首页')}</a><span>/</span><b>${t('about', '关于记录')}</b></div>
-      <section class="about-hero"><span class="section-kicker">${t('aboutKicker', '03 / THE PHILOSOPHY')}</span><h1>${t('aboutTitle1', '不是菜谱大全，')}<br/><em>${t('aboutTitle2', '是一份真实的厨房日记。')}</em></h1><p>${t('aboutIntro', '每一道菜都来自实际做过的记录。把知道的写清楚，把不知道的留白。')}</p></section>
-      <section class="principle-grid"><article><span>01</span><h2>${t('principle1Title', '真实胜过完整')}</h2><p>${t('principle1Text', '缺少的烹饪时间、食材用量和步骤会标为「尚未记录」，而不是为了让页面好看而猜测。')}</p></article><article><span>02</span><h2>${t('principle2Title', '失败也要留下')}</h2><p>${t('principle2Text', '把「实际经验」与「下次可以改进」分开展示。建议不是既成事实。')}</p></article><article><span>03</span><h2>${t('principle3Title', '照片需要确认')}</h2><p>${t('principle3Text', '只有可靠匹配的照片可以关联菜谱。待确认的照片不擅自归类，更不拿来证明未记录的事情。')}</p></article></section>
-      <section class="about-foot"><div><span>${t('howItWorks', 'HOW IT WORKS')}</span><h2>${t('aboutFootTitle', 'Markdown 写内容，网页负责展示。')}</h2><p>${t('aboutFootText', '每一道菜对应一个 Markdown 文件。修改食材、步骤或记录后，重新运行构建即可更新网站，不需要数据库或后台。')}</p></div><a href="#/">${t('goRecipes', '去看菜谱')} ${arrow}</a></section>
-    </main>`;
-  }
-
   function shell(view, active) { return `${header(active)}${view}${footer()}`; }
 
   function updateGallery() {
@@ -376,7 +366,6 @@
       const recipe = recipes.find(rec => rec.id === r.id);
       app.innerHTML = shell(recipe ? detail(recipe) : `<main class="layout-container not-found"><h1>${t('notFound', '没有找到这道菜')}</h1><a href="#/">${back} ${t('backToList', '返回列表')}</a></main>`, 'recipe');
     } else if (r.type === 'photos') app.innerHTML = shell(photosPage(), 'photos');
-    else if (r.type === 'about') app.innerHTML = shell(aboutPage(), 'about');
     else app.innerHTML = shell(home(), 'home');
     attachEvents();
     if (r.type === 'home' && location.hash === '#recipes') {
