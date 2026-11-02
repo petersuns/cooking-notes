@@ -12,7 +12,7 @@
   const detectedLocale = browserLanguage.startsWith('nl') ? 'nl' : browserLanguage.startsWith('en') ? 'en' : 'zh';
   const initialLocale = isLocale(requestedLocale) ? requestedLocale : isLocale(savedLocale) ? savedLocale : detectedLocale;
   const state = { query: '', category: '全部', tag: '全部', status: 'cooked', locale: initialLocale };
-  const categories = ['全部', '海鲜', '蔬菜', '鸡蛋', '汤', '肉类'];
+  const categories = ['全部', '海鲜', '蔬菜', '鸡蛋', '汤', '肉类', '沙拉'];
   const matchedCount = photos.filter(p => p.matchStatus === 'matched').length;
   const reviewCount = photos.filter(p => p.matchStatus === 'review').length;
   const cookedCount = recipes.filter(r => r.status === 'cooked').length;
@@ -249,7 +249,7 @@
         <h1>${escape(display.title)}</h1>
         <p>${t('recipeIntro', '记下做过的步骤、真实感受，以及下次还想改进的地方。')}</p>
         <div class="detail-tag-row">${recipe.tags.map(tag => chip(tagLabel(tag))).join('')}</div>
-        <div class="detail-action-row"><span class="cooked-label"><span class="dot"></span> ${t('cooked', '实际做过')}</span><button type="button" class="print-button">${t('print', '打印菜谱 ↗')}</button></div></div>
+        <div class="detail-action-row"><span class="cooked-label"><span class="dot"></span> ${recipe.status === 'cooked' ? t('cooked', '实际做过') : t('statusTry', '想试试')}</span><button type="button" class="print-button">${t('print', '打印菜谱 ↗')}</button></div></div>
         <div class="detail-cover">${cover ? photoVisual(localizedPhoto(cover)) : reference ? referenceVisual(reference, display.title) : photoVisual(null)}</div>
       </div>
       <div class="detail-body">
