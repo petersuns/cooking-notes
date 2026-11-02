@@ -91,7 +91,6 @@
     return `<header class="site-header">
       <div class="header-inner layout-container">
         <a class="brand" href="#/" aria-label="${t('brandAria', '我的厨房笔记，返回首页')}">
-          <span class="brand-symbol"><span class="brand-fork">✳</span></span>
           <span class="brand-title"><strong>${t('brand', '厨房笔记')}</strong><small>${t('brandSubtitle', 'THE COOKING JOURNAL')}</small></span>
         </a>
         <nav class="main-nav" aria-label="${t('mainNavAria', '主导航')}">
@@ -217,7 +216,7 @@
   function home() {
     return `${stats()}
       <section class="catalog layout-container" id="recipes">
-        <div class="section-heading"><div><span class="section-kicker">${t('recipesKicker', '01 / THE RECIPES')}</span><h2>${t('sectionRecipes', '我的菜谱收藏')}<span class="heading-mark">✳</span></h2><p>${t('sectionDescription', '每一道菜都有自己的小故事，和可以做得更好的地方。')}</p></div><span class="section-side">${t('fromKitchen', 'FROM MY KITCHEN')}<br/>${t('toPages', 'TO THESE PAGES')}</span></div>
+        <div class="section-heading"><div><span class="section-kicker">${t('recipesKicker', '01 / THE RECIPES')}</span><h2>${t('sectionRecipes', '我的菜谱收藏')}</h2><p>${t('sectionDescription', '每一道菜都有自己的小故事，和可以做得更好的地方。')}</p></div><span class="section-side">${t('fromKitchen', 'FROM MY KITCHEN')}<br/>${t('toPages', 'TO THESE PAGES')}</span></div>
         <div class="status-tabs" role="group" aria-label="${t('statusAria', '菜谱状态')}">
           <button type="button" class="status-button ${state.status === 'cooked' ? 'active' : ''}" data-status="cooked" aria-pressed="${state.status === 'cooked'}">${t('statusCooked', '已经做过')} <span>${cookedCount}</span></button>
           <button type="button" class="status-button ${state.status === 'to-try' ? 'active' : ''}" data-status="to-try" aria-pressed="${state.status === 'to-try'}">${t('statusTry', '想试试')} <span>${recipes.filter(r => r.status === 'to-try').length}</span></button>
