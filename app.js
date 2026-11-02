@@ -4,7 +4,14 @@
   const { recipes, photos, translations = {} } = JSON.parse(document.getElementById('cookbook-data').textContent);
   const app = document.getElementById('app');
   const storage = (() => { try { return window.localStorage; } catch { return null; } })();
-  const state = { query: '', category: '全部', tag: '全部', status: 'cooked', locale: storage?.getItem('cooking-locale') === 'en' ? 'en' : 'zh' };
+  const supportedLocales = ['zh', 'en', 'nl'];
+  const isLocale = value => supportedLocales.includes(value);
+  const savedLocale = storage?.getItem('cooking-locale');
+  const requestedLocale = typeof URLSearchParams !== 'undefined' ? new URLSearchParams(location.search || '').get('lang') : null;
+  const browserLanguage = typeof navigator !== 'undefined' ? String(navigator.language || '').toLowerCase() : '';
+  const detectedLocale = browserLanguage.startsWith('nl') ? 'nl' : browserLanguage.startsWith('en') ? 'en' : 'zh';
+  const initialLocale = isLocale(savedLocale) ? savedLocale : isLocale(requestedLocale) ? requestedLocale : detectedLocale;
+  const state = { query: '', category: '全部', tag: '全部', status: 'cooked', locale: initialLocale };
   const categories = ['全部', '海鲜', '蔬菜', '鸡蛋', '汤', '肉类'];
   const matchedCount = photos.filter(p => p.matchStatus === 'matched').length;
   const reviewCount = photos.filter(p => p.matchStatus === 'review').length;
@@ -19,19 +26,38 @@
   const clockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/><path d="M12 7v5l3.5 2"/></svg>';
 
   const englishUI = translations.ui?.en || {};
+  const dutchUI = translations.nl?.ui || {};
+  function currentUI() {
+    return state.locale === 'en' ? englishUI : state.locale === 'nl' ? dutchUI : {};
+  }
+  function currentRecipeTranslation(recipe) {
+    return state.locale === 'en'
+      ? (translations.recipes?.[recipe.id] || {})
+      : state.locale === 'nl'
+        ? (translations.nl?.recipes?.[recipe.id] || {})
+        : {};
+  }
+  function currentPhotoTranslation(photo) {
+    return state.locale === 'en'
+      ? (translations.photos?.[photo.displayFile] || {})
+      : state.locale === 'nl'
+        ? (translations.nl?.photos?.[photo.displayFile] || {})
+        : {};
+  }
   function t(key, fallback, values = {}) {
-    let text = state.locale === 'en' ? (englishUI[key] || fallback) : fallback;
+    const ui = currentUI();
+    let text = state.locale === 'zh' ? fallback : (ui[key] || fallback);
     Object.entries(values).forEach(([name, value]) => { text = text.replaceAll('{' + name + '}', String(value)); });
     return text;
   }
   function categoryLabel(category) {
-    return state.locale === 'en' ? (englishUI.categories?.[category] || category) : category;
+    return state.locale === 'zh' ? category : (currentUI().categories?.[category] || category);
   }
   function tagLabel(tag) {
-    return state.locale === 'en' ? (englishUI.tags?.[tag] || tag) : tag;
+    return state.locale === 'zh' ? tag : (currentUI().tags?.[tag] || tag);
   }
   function localizedRecipe(recipe) {
-    const tr = state.locale === 'en' ? (translations.recipes?.[recipe.id] || {}) : {};
+    const tr = currentRecipeTranslation(recipe);
     const localized = { ...recipe };
     ['title', 'category', 'ingredients', 'seasonings', 'instructions', 'experience', 'improvements', 'nextSeasonings', 'notes', 'sources'].forEach(key => {
       if (tr[key] !== undefined) localized[key] = tr[key];
@@ -39,7 +65,7 @@
     return localized;
   }
   function localizedPhoto(photo) {
-    const tr = state.locale === 'en' ? (translations.photos?.[photo.displayFile] || {}) : {};
+    const tr = currentPhotoTranslation(photo);
     return { ...photo, ...tr };
   }
 
@@ -56,15 +82,19 @@
       <div class="header-inner layout-container">
         <a class="brand" href="#/" aria-label="${t('brandAria', '我的厨房笔记，返回首页')}">
           <span class="brand-symbol"><span class="brand-fork">✳</span></span>
-          <span class="brand-title"><strong>${t('brand', '厨房笔记')}</strong><small>THE COOKING JOURNAL</small></span>
+          <span class="brand-title"><strong>${t('brand', '厨房笔记')}</strong><small>${t('brandSubtitle', 'THE COOKING JOURNAL')}</small></span>
         </a>
         <nav class="main-nav" aria-label="${t('mainNavAria', '主导航')}">
           <a href="#/" ${current === 'home' ? 'aria-current="page"' : ''}>${t('recipes', '菜谱')} <span class="nav-count">${cookedCount}</span></a>
           <a href="#/photos" ${current === 'photos' ? 'aria-current="page"' : ''}>${t('photos', '照片档案')}</a>
           <a href="#/about" ${current === 'about' ? 'aria-current="page"' : ''}>${t('about', '关于记录')}</a>
         </nav>
-        <button class="language-toggle" type="button" aria-label="${t('languageAria', '切换到英文')}">${state.locale === 'en' ? t('languageToggle', '中文') : 'English'}</button>
-        <div class="header-side"><span class="header-star">✳</span> KEEP THE GOOD BITS</div>
+        <select class="language-select" aria-label="${t('languageAria', '选择语言')}">
+          <option value="zh" ${state.locale === 'zh' ? 'selected' : ''}>${t('languageChinese', '中文')}</option>
+          <option value="en" ${state.locale === 'en' ? 'selected' : ''}>${t('languageEnglish', 'English')}</option>
+          <option value="nl" ${state.locale === 'nl' ? 'selected' : ''}>${t('languageDutch', 'Nederlands')}</option>
+        </select>
+        <div class="header-side"><span class="header-star">✳</span> ${t('headerSide', 'KEEP THE GOOD BITS')}</div>
       </div>
     </header>`;
   }
@@ -73,7 +103,7 @@
     return `<footer class="site-footer"><div class="layout-container footer-inner">
       <div class="footer-brand">✳ <span>${t('brand', '厨房笔记')}</span></div>
       <span>${t('footerText', '记录真实做过的菜，也记录不那么成功的尝试。')}</span>
-      <span>PERSONAL COOKING ARCHIVE</span>
+      <span>${t('footerArchive', 'PERSONAL COOKING ARCHIVE')}</span>
     </div></footer>`;
   }
 
@@ -121,23 +151,23 @@
     return `<section class="hero layout-container">
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-line"></span> ${t('heroEyebrow', 'A PERSONAL COOKING ARCHIVE')} <span class="edition">${t('heroEdition', 'VOL. 01')}</span></div>
-        <h1>${state.locale === 'en' ? t('heroTitle1', 'Take every time you cook') : '把每一次下厨，'}<br/><em>${state.locale === 'en' ? t('heroTitle2', 'seriously enough to remember.') : '都认真记下来。'}</em></h1>
+        <h1>${state.locale === 'zh' ? '把每一次下厨，' : t('heroTitle1', 'Take every time you cook')}<br/><em>${state.locale === 'zh' ? '都认真记下来。' : t('heroTitle2', 'seriously enough to remember.')}</em></h1>
         <p class="hero-description">${t('heroDescription', '不只是好吃的做法，也收藏失败的原因、下一次的想法，还有那些值得留下的厨房小发现。')}</p>
         <a class="hero-link" href="#recipes"><span>${t('heroLink', '翻看我的菜谱')}</span><span class="hero-link-icon">${arrow}</span></a>
       </div>
       <div class="hero-art" role="img" aria-label="${t('heroAria', '抽象装饰图案：厨房笔记与盘子，不代表实际菜肴照片')}">
-        <div class="art-top">THE<br/>COOKING<br/>JOURNAL <span>✳</span></div>
-        <div class="art-plate"><div class="art-plate-ring"><span>GOOD FOOD<br/>GOOD NOTES</span></div></div>
-        <div class="art-bottom"><span>COLLECTED WITH CARE</span><span>EST. 2026</span></div>
+        <div class="art-top">${t('artJournal', 'THE<br/>COOKING<br/>JOURNAL')} <span>✳</span></div>
+        <div class="art-plate"><div class="art-plate-ring"><span>${t('artGoodFood', 'GOOD FOOD')}<br/>${t('artGoodNotes', 'GOOD NOTES')}</span></div></div>
+        <div class="art-bottom"><span>${t('artCollected', 'COLLECTED WITH CARE')}</span><span>${t('artEst', 'EST. 2026')}</span></div>
       </div>
     </section>`;
   }
 
   function stats() {
     return `<section class="stats-strip layout-container" aria-label="${t('statsAria', '菜谱统计')}">
-      <div class="stat"><strong>${String(cookedCount).padStart(2, '0')}</strong><span>${t('statsCooked', '做过的菜谱')}<small>COOKED RECIPES</small></span></div>
-      <div class="stat"><strong>${String(matchedCount).padStart(2, '0')}</strong><span>${t('statsMatched', '已匹配照片')}<small>MATCHED REFERENCES</small></span></div>
-      <div class="stat"><strong>${String(reviewCount).padStart(2, '0')}</strong><span>${t('statsReview', '待确认照片')}<small>NEEDS REVIEW</small></span></div>
+      <div class="stat"><strong>${String(cookedCount).padStart(2, '0')}</strong><span>${t('statsCooked', '做过的菜谱')}<small>${t('statsCookedMeta', 'COOKED RECIPES')}</small></span></div>
+      <div class="stat"><strong>${String(matchedCount).padStart(2, '0')}</strong><span>${t('statsMatched', '已匹配照片')}<small>${t('statsMatchedMeta', 'MATCHED REFERENCES')}</small></span></div>
+      <div class="stat"><strong>${String(reviewCount).padStart(2, '0')}</strong><span>${t('statsReview', '待确认照片')}<small>${t('statsReviewMeta', 'NEEDS REVIEW')}</small></span></div>
       <div class="stat stat-note"><span>${t('statsNote1', '值得记录的，不只是')}<br/>${t('statsNote2', '成功的那一顿。')}</span><i>✳</i></div>
     </section>`;
   }
@@ -147,9 +177,9 @@
       <div class="search-wrap">${searchIcon}<input id="recipe-search" type="search" placeholder="${t('searchPlaceholder', '搜索菜名、食材或标签…')}" autocomplete="off" aria-label="${t('searchAria', '搜索菜名或食材')}" value="${escape(state.query)}" />
         ${state.query ? `<button class="clear-search" type="button" aria-label="${t('clearSearch', '清除搜索')}">×</button>` : ''}
       </div>
-      <div class="filter-title">${t('browseCategory', '按类别浏览')} <span>FILTER BY CATEGORY</span></div>
+      <div class="filter-title">${t('browseCategory', '按类别浏览')} <span>${t('filterCategoryMeta', 'FILTER BY CATEGORY')}</span></div>
       <div class="category-row" role="group" aria-label="${t('categoryAria', '菜谱类别')}">${categories.map(cat => `<button type="button" class="category-button ${state.category === cat ? 'active' : ''}" data-category="${escape(cat)}" aria-pressed="${state.category === cat}">${escape(categoryLabel(cat))}</button>`).join('')}</div>
-      <div class="filter-title tag-title">${t('browseTag', '按标签浏览')} <span>FILTER BY TAG</span></div>
+      <div class="filter-title tag-title">${t('browseTag', '按标签浏览')} <span>${t('filterTagMeta', 'FILTER BY TAG')}</span></div>
       <div class="tag-row" role="group" aria-label="${t('tagAria', '标签筛选')}">${['全部', ...tags].map(tag => `<button type="button" class="tag-button ${state.tag === tag ? 'active' : ''}" data-tag="${escape(tag)}" aria-pressed="${state.tag === tag}">${escape(tag === '全部' ? t('all', '全部') : tagLabel(tag))}</button>`).join('')}</div>
     </div>`;
   }
@@ -178,7 +208,7 @@
   function home() {
     return `${stats()}
       <section class="catalog layout-container" id="recipes">
-        <div class="section-heading"><div><span class="section-kicker">01 / THE RECIPES</span><h2>${t('sectionRecipes', '我的菜谱收藏')}<span class="heading-mark">✳</span></h2><p>${t('sectionDescription', '每一道菜都有自己的小故事，和可以做得更好的地方。')}</p></div><span class="section-side">${t('fromKitchen', 'FROM MY KITCHEN')}<br/>${t('toPages', 'TO THESE PAGES')}</span></div>
+        <div class="section-heading"><div><span class="section-kicker">${t('recipesKicker', '01 / THE RECIPES')}</span><h2>${t('sectionRecipes', '我的菜谱收藏')}<span class="heading-mark">✳</span></h2><p>${t('sectionDescription', '每一道菜都有自己的小故事，和可以做得更好的地方。')}</p></div><span class="section-side">${t('fromKitchen', 'FROM MY KITCHEN')}<br/>${t('toPages', 'TO THESE PAGES')}</span></div>
         <div class="status-tabs" role="group" aria-label="${t('statusAria', '菜谱状态')}">
           <button type="button" class="status-button ${state.status === 'cooked' ? 'active' : ''}" data-status="cooked" aria-pressed="${state.status === 'cooked'}">${t('statusCooked', '已经做过')} <span>${cookedCount}</span></button>
           <button type="button" class="status-button ${state.status === 'to-try' ? 'active' : ''}" data-status="to-try" aria-pressed="${state.status === 'to-try'}">${t('statusTry', '想试试')} <span>${recipes.filter(r => r.status === 'to-try').length}</span></button>
@@ -207,7 +237,7 @@
     const extraTip = recipe.photos.length && !recipe.photos.some(p => p.available) ? t('photoPending', '目前尚未提供实际图片文件。') : '';
     return `<main class="detail-page layout-container">
       <div class="breadcrumbs"><a href="#/">${t('allRecipes', '全部菜谱')}</a><span>/</span><span>${escape(display.category)}</span><span>/</span><b>${escape(display.title)}</b></div>
-      <div class="detail-top"><div class="detail-intro"><div class="detail-kicker">RECIPE ${String(idx).padStart(2, '0')} / ${String(recipes.length).padStart(2, '0')} <span class="detail-line"></span> ${escape(display.category)}</div>
+      <div class="detail-top"><div class="detail-intro"><div class="detail-kicker">${t('recipeLabel', 'RECIPE')} ${String(idx).padStart(2, '0')} / ${String(recipes.length).padStart(2, '0')} <span class="detail-line"></span> ${escape(display.category)}</div>
         <h1>${escape(display.title)}</h1>
         <p>${t('recipeIntro', '记下做过的步骤、真实感受，以及下次还想改进的地方。')}</p>
         <div class="detail-tag-row">${recipe.tags.map(tag => chip(tagLabel(tag))).join('')}</div>
@@ -240,7 +270,7 @@
     return `<article class="album-card ${confirmed ? '' : 'review-photo'}">
       ${photoVisual(display, 'album')}
       <div class="album-content"><div class="album-topline"><span class="album-status ${confirmed ? 'matched' : 'review'}">${confirmed ? t('photoConfirmed', '✓ 已可靠匹配') : t('photoReview', '◌ 待确认')}</span><span>${escape(display.date)}</span></div>
-      <h3>${escape(display.identifiedAs)}</h3><p>${escape(display.note)}</p><div class="album-files"><span>ORIGINAL <b>${escape(display.originalFile)}</b></span><span>DISPLAY <b>${escape(display.displayFile)}</b></span></div>
+      <h3>${escape(display.identifiedAs)}</h3><p>${escape(display.note)}</p><div class="album-files"><span>${t('originalLabel', 'ORIGINAL')} <b>${escape(display.originalFile)}</b></span><span>${t('displayLabel', 'DISPLAY')} <b>${escape(display.displayFile)}</b></span></div>
       ${confirmed ? `<a class="album-recipe-link" href="#/recipe/${encodeURIComponent(photo.recipeId)}">${t('viewRecipe', '查看对应菜谱')} ${arrow}</a>` : `<span class="album-unassigned">${t('unassigned', '尚未归入任何正式菜谱')}</span>`}</div>
     </article>`;
   }
@@ -255,7 +285,7 @@
         : t('imageBannerAllConfirmed', `已接入 ${availableCount} 张 JPEG 显示图片；原始 HEIC 保留在资料库中。当前照片均已根据用户确认关联到对应菜谱。`, { count: availableCount })
       : t('imageBannerNone', '目前只有照片文件名和审核记录，没有收到实际 HEIC 或 JPEG 图片。下方先保留照片位置；把真实 JPG 放入项目的 images/photos/ 文件夹并重新构建，图片即可显示。');
     return `<main class="album-page layout-container"><div class="breadcrumbs"><a href="#/">${t('home', '首页')}</a><span>/</span><b>${t('photos', '照片档案')}</b></div>
-      <div class="page-intro"><span class="section-kicker">02 / PHOTO ARCHIVE</span><h1>${t('photoArchiveTitle', '镜头里的厨房。')}<span>✳</span></h1><p>${t('photoArchiveIntro1', '照片是回忆的一部分，但不是所有照片都能准确对应到某道菜。')}<br/>${t('photoArchiveIntro2', '已确认的归档，不能确认的先留着。')}</p></div>
+      <div class="page-intro"><span class="section-kicker">${t('photoArchiveKicker', '02 / PHOTO ARCHIVE')}</span><h1>${t('photoArchiveTitle', '镜头里的厨房。')}<span>✳</span></h1><p>${t('photoArchiveIntro1', '照片是回忆的一部分，但不是所有照片都能准确对应到某道菜。')}<br/>${t('photoArchiveIntro2', '已确认的归档，不能确认的先留着。')}</p></div>
       <div class="archive-banner"><span class="banner-icon">${photoIcon}</span><div><strong>${t('imageBannerTitle', '关于图片文件')}</strong><p>${imageMessage}</p></div></div>
       <section class="photo-group"><div class="photo-group-title"><div><span class="section-kicker">${t('confirmedKicker', '01 / CONFIRMED')}</span><h2>${t('confirmedTitle', '已可靠匹配')} <span>${matched.length}</span></h2></div><p>${t('confirmedSubtitle', '已确认属于现有菜谱')}</p></div><div class="album-grid">${matched.map(photoCard).join('')}</div></section>
       ${pending.length ? `<section class="photo-group"><div class="photo-group-title"><div><span class="section-kicker">${t('toReviewKicker', '02 / TO REVIEW')}</span><h2>${t('toReviewTitle', '待确认')} <span>${pending.length}</span></h2></div><p>${t('toReviewSubtitle', '保留可能性，不做未经确认的推断')}</p></div><div class="album-grid">${pending.map(photoCard).join('')}</div></section>` : ''}
@@ -320,8 +350,8 @@
       state.query = ''; state.category = '全部'; state.tag = '全部'; updateFilters();
     });
     document.querySelector('.print-button')?.addEventListener('click', () => window.print());
-    document.querySelector('.language-toggle')?.addEventListener('click', () => {
-      state.locale = state.locale === 'en' ? 'zh' : 'en';
+    document.querySelector('.language-select')?.addEventListener('change', event => {
+      state.locale = isLocale(event.target.value) ? event.target.value : 'zh';
       storage?.setItem('cooking-locale', state.locale);
       render();
     });
@@ -330,8 +360,8 @@
   function render() {
     const r = route();
     if (document.documentElement) {
-      document.documentElement.lang = state.locale === 'en' ? 'en' : 'zh-CN';
-      document.title = state.locale === 'en' ? 'Cooking Notes' : '我的厨房笔记 · Cooking Notes';
+      document.documentElement.lang = state.locale === 'en' ? 'en' : state.locale === 'nl' ? 'nl' : 'zh-CN';
+      document.title = state.locale === 'en' ? 'Cooking Notes' : state.locale === 'nl' ? 'Kooknotities' : '我的厨房笔记 · Cooking Notes';
     }
     if (r.type === 'recipe') {
       const recipe = recipes.find(rec => rec.id === r.id);
